@@ -1,0 +1,242 @@
+---
+title: "Exploratory Data Analysis (EDA)"
+author: "Mikey Elmers"
+date: "02/26/2023"
+output: html_document
+---
+
+```{r, eval=FALSE, echo=FALSE}
+rmarkdown::render(here::here('scripts/02_eda.Rmd'),
+                  output_dir = here::here('output/'))
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE, echo=FALSE}
+library(dplyr)
+library(ggplot2)
+library(ordinal)
+library(sjPlot)
+library(likert)
+```
+
+## Overview
+This document investigates pause-internal particles (PINTs) in TTS.
+
+### Yale lectures
+Speaker taken from [Open Yale Courses](https://oyc.yale.edu).
+
+1. [Langdon Hammer](https://oyc.yale.edu/english/engl-310) 
+    + Course Number: ENGL 310
+    + Course Name: Modern Poetry
+    + Sessions: 25
+  
+## Dataframe codebook
+The following PINTs are investigated: 
+
+* silence (sil)
+* inhalation noise (in)
+* filler particles (uh/um)
+* tongue click (cl)
+
+Variable Name         | Description
+---                   | ---
+subj_id               | individualized subject id number
+certain               | certainty score (1: completely uncertain - 7: completely certain)
+stimuli               | specifies condition and specific textual sentence
+condition             | four possible conditions (fluent, sil, um, and click)
+
+There are 50 unique subj_id since 50 subjects participated. In this study the participants listened to audio and determined how "certain" the speaker sounded of his opinion in the audio sample. A Likert scale was used for evaluation with 1 representing "completely uncertain" and 7 representing "completely certain". Listeners heard a total of 40 audio stimuli consisting of 10 different sentences synthesized in 4 different conditions. The "fluent" condition did not insert PINTs during synthesis. The "silence" condition inserted a longer silence by including 3 of silence symbols (, , ,) during synthesis. The "um" condition inserted a silence and "um" (, um) during synthesis. The "click" condition inserted a silence, um, tongue click, and inhalation (, um tk in). Anecdotally, adding an inhalation after the tongue click symbol improved the quality of the tongue click. Without an inhalation or silence the synthesizer would attempt to pronounce the tongue click symbol (tk) phonetically.  
+
+```{r, echo=FALSE}
+df <- read.csv(here::here("data/final/data_cleaned.csv"), row.names = NULL)
+```
+
+First, we convert the variables subj_id, certain, and condition to factors. Our dependent variable (certain) here is ordinal. 
+```{r}
+# convert subject id and certainty scores to factor
+df$subj_id <- factor(df$subj_id)
+df$certain <- factor(df$certain, ordered = TRUE)
+df$condition <- factor(df$condition)
+```
+
+There are no NA values for the relevant columns
+```{r}
+any(is.na(df$certain))
+any(is.na(df$subj_id))
+any(is.na(df$condition))
+```
+
+## Descriptive Statistics
+```{r, echo=FALSE}
+# Mode function
+Modes <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x,ux)))]
+}
+```
+
+
+### All data
+```{r}
+df$certain <- as.numeric(df$certain)
+
+df %>% 
+  summarise(mean=mean(certain),
+            min=min(certain),
+            max=max(certain),
+            median=median(certain),
+            mode=Modes(certain),
+            std=sd(certain))
+```
+
+### Grouped by condition
+```{r}
+df$certain <- as.numeric(df$certain)
+
+df %>% 
+  group_by(condition) %>% 
+  summarise(mean=mean(certain),
+            min=min(certain),
+            max=max(certain),
+            median=median(certain),
+            mode=Modes(certain),
+            std=sd(certain)) %>% 
+  ungroup()
+```
+
+```{r}
+# change click -> tclick so that fluent is the reference
+df <- df %>% 
+  mutate(condition = if_else(condition == "click", "tclick", condition))
+
+# convert variables to factors
+df$certain <- factor(df$certain, ordered = TRUE)
+df$subj_id <- factor(df$subj_id)
+df$stimuli <- factor(df$stimuli)
+df$condition <- factor(df$condition)
+
+# Create a clmm model
+clmm_model_a <- clmm(certain ~ condition + (1|subj_id) + (1|stimuli), data = df)
+clmm_model_b <- clmm(certain ~ (1|subj_id) + (1|stimuli), data = df)
+anova(clmm_model_a, clmm_model_b)
+
+# View summary of model
+summary(clmm_model_a)
+# summary(clmm_model_b)
+
+# Calculate confidence intervals
+confint(clmm_model_a, level = 0.95)
+```
+### Post-hoc analyses
+```{r}
+library(emmeans)
+emmeans(clmm_model_a, pairwise ~ condition)
+emmeans(clmm_model_a, pairwise ~ condition, type = "response", adjust = "bonferroni")
+```
+
+
+```{r}
+fluent_success <- plogis(4.5375)
+sil_success <- plogis(1.4016)
+um_success <- plogis(0.3915)
+```
+
+## Graphical Summary
+```{r}
+plot_model(clmm_model_a)
+plot_model(clmm_model_a, type="pred")
+```
+
+```{r}
+df_likert <- subset(df, select = -c(stimuli, subj_id))
+
+freq_data <- count(df_likert, condition, certain)
+
+percent_data <- freq_data %>% 
+  group_by(condition) %>% 
+  mutate(total = sum(n),
+         percent = n / total * 100) %>% 
+  ungroup()
+
+merged_data <- merge(df, percent_data, by = c("condition", "certain"))
+
+merged_data$condition <- factor(merged_data$condition, 
+                                levels = c("fluent", "sil", "um", "click"))
+
+plot_heatmap <- ggplot(merged_data, aes(x = certain, y = condition, fill = percent)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "darkolivegreen3") +
+  labs(x = "Certainty Score", y = "Condition", fill = "Percent") +
+  geom_text(aes(label = paste0(round(percent), "%")), size = 8,  color = "black") +
+  theme(axis.ticks = element_blank(),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        axis.text.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 20))
+
+ggsave(here::here("output/plot_heatmap.png"), plot_heatmap, dpi = 900, width = 10, height = 6)
+```
+
+### TTS Comparison
+Here we are comparing:
+* Natural speech
+* TTS model with PINTs labels
+* TTS model without PINTs labels
+
+```{r}
+df_tts <- read.csv(here::here("data/final/data_tts_cleaned.csv"), row.names = NULL)
+```
+
+Check for NA values
+```{r}
+any(is.na(df_tts$segment))
+any(is.na(df_tts$duration))
+any(is.na(df_tts$condition))
+```
+
+```{r}
+df_tts %>% 
+  group_by(condition) %>% 
+  summarise(total_dur_pints = sum(dur),
+            total_dur_speaking = sum(unique(filedur)),
+            prop = total_dur_pints / total_dur_speaking * 100,
+            mean_int = mean(mean_intensity),
+            sd_int = sd(mean_intensity)) %>% 
+  ungroup()
+```
+### Count information grouped by condition and label
+```{r}
+df_tts %>% 
+  group_by(condition, segment) %>% 
+  summarise(count = n()) %>%  
+  ungroup()
+```
+
+
+```{r}
+df_tts %>% 
+  group_by(condition, segment) %>% 
+  summarise(total_dur_pints = sum(dur),
+            total_dur_speaking = sum(unique(filedur)),
+            prop = total_dur_pints / total_dur_speaking * 100,
+            mean_int = mean(mean_intensity),
+            sd_int = sd(mean_intensity)) %>% 
+  ungroup()
+```
+
+
+
+* total_dur_pints: duration (in seconds) for all PINTs for that speaker
+* total_dur_speakingtime: duration (in seconds) for the entire speaking time
+* prop: proportion (% out of 100) for PINTs duration out of entire speaking time
+```{r}
+df_tts %>% 
+  group_by(file) %>% 
+  summarise(total_dur_pints = sum(dur), total_dur_speakingtime = sum(unique(filedur)), prop = total_dur_pints / total_dur_speakingtime * 100) %>% 
+  ungroup()
+```
