@@ -37,7 +37,7 @@ The following PINTs are investigated:
 - Final data
 
 ### `docs`
-- `elmers_interspeech23_paper.pdf`: ICPhS '23 paper submission (will be added when available)
+- `elmers_interspeech23_paper.pdf`: Interspeech '23 paper submission (will be added when available)
 
 ### `output`
 - `02_analysis.html`: Output of analysis.Rmd file
