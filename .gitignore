@@ -5,3 +5,7 @@
 .Rdata
 .httr-oauth
 .DS_Store
+data/raw/sessions.csv
+scripts/00_renvSnapshot.R
+scripts/00_sessionInfo.R
+scripts/00_test.R
