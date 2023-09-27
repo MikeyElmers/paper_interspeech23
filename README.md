@@ -39,7 +39,8 @@ The following PINTs are investigated:
 - Final data
 
 ### `docs`
-- `elmers_interspeech23_paper.pdf`: Interspeech '23 paper submission (will be added when available)
+- `elmers_interspeech23_paper.pdf`: Interspeech '23 paper submission
+- `elmers_interspeech23_poster.pdf`: Interspeech '23 poster submission
 
 ### `output`
 - `02_analysis.html`: Output of analysis.Rmd file
@@ -49,7 +50,7 @@ The following PINTs are investigated:
 ### `scripts`
 - `00_renvRestore.R`: Restores project dependencies
 - `01_clean.R`: Cleans and exports final data
-- `02_analysis.Rmd`: Descriptive and inferential data analysis
+- `02_eda.Rmd`: Descriptive and inferential data analysis
 
 ## Issues/Comments/Suggestions
 Please use the [issue tracker](https://github.com/MikeyElmers/paper_interspeech23/issues). 
