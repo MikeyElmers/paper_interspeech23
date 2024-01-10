@@ -21,6 +21,7 @@ The following PINTs are investigated:
     * [docs](#docs)
     * [output](#output)
     * [scripts](#scripts)
+- [Citation](#citation)    
 - [Issues/comments/suggestions](#issuescommentssuggestions)
 - [License](#license)
 - [References](#references)
@@ -51,6 +52,19 @@ The following PINTs are investigated:
 - `00_renvRestore.R`: Restores project dependencies
 - `01_clean.R`: Cleans and exports final data
 - `02_eda.Rmd`: Descriptive and inferential data analysis
+
+## Citation
+If you use this data or code for you work, please cite as:
+```bibtex
+@inproceedings{elmers23interspeech,
+  author={Mikey Elmers and Johannah O'Mahony and \'{E}va Sz\'{e}kely},
+  title={{Synthesis after a couple PINTs: Investigating the Role of Pause-Internal Phonetic Particles in Speech Synthesis and Perception}},
+  year=2023,
+  booktitle={Proc. INTERSPEECH 2023},
+  pages={4843--4847},
+  doi={10.21437/Interspeech.2023-2178}
+}
+```
 
 ## Issues/Comments/Suggestions
 Please use the [issue tracker](https://github.com/MikeyElmers/paper_interspeech23/issues). 
